@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
+import os
 import re
 import requests
+import pygsheets
+import hashlib
 from bs4 import BeautifulSoup as Bs
 
+
 SEARCH_PAGE = 'http://www.pap.fr/annonce/locations-appartement-paris-18e-g37785-3-pieces-jusqu-a-1500-euros'
+SPREADSHEET_URL = os.environ.get('SPREADSHEET_URL')
 URL_DOMAIN = 'http://www.pap.fr'
+
+PAGINATION_SELECTOR = '.pagination li a'
 LISTING_DETAIL_BTN_SELECTOR = '.btn-details'
 NEXT_PAGE_SELECTOR = '.next'
-
 GEOLOC_SELECTOR = '.item-geoloc'
 SPECS_SELECTOR = '.item-summary'
 DESCRIPTION_SELECTOR = '.item-description'
@@ -54,6 +60,7 @@ def process_listing(listing):
     tel = dom.select(TEL_WRAPPER) and dom.select(TEL_WRAPPER)[0].get_text().replace('.', '') or '---'
 
     return {
+        'id': hashlib.md5(b'' + description + tel)
         'specs': specs,
         'location': location,
         'description': description,
@@ -63,17 +70,32 @@ def process_listing(listing):
     }
 
 try:
+    gc = pygsheets.authorize(service_file='credentials.json')
+
+    sheet = gc.open_by_url(SPREADSHEET_URL).sheet1
+
     res = requests.get(SEARCH_PAGE)
     dom = Bs(res.text, 'lxml')
-    links = [SEARCH_PAGE] + [URL_DOMAIN + a.get('href') for a in dom.select('.pagination li a')]
 
-    data = []
+    links = [SEARCH_PAGE] + [
+        URL_DOMAIN + a.get('href')
+        for a in dom.select(PAGINATION_SELECTOR)
+    ]
+
+    # data = []
 
     for link in links:
-        for listing in process_listings_page(link):
-            data.append(listing)
+        for ls in process_listings_page(link):
+            # data.append(ls)
+            sheet.insert_rows(
+                row=0, values=[
+                    ls['id'], ls['specs'], ls['location'],
+                    ls['description'], ls['metro'],
+                    ls['tel'], ls['url']
+                ]
+            )
 
-    print(data)
+    # print(data)
 
 except Exception as e:
     print(e)
