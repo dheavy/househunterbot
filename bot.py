@@ -3,6 +3,8 @@ import os
 import re
 import requests
 import pygsheets
+import callr
+from pyshorteners import Shortener
 from bs4 import BeautifulSoup as Bs
 
 
@@ -17,6 +19,13 @@ GEOLOC_SELECTOR = '.item-geoloc'
 SPECS_SELECTOR = '.item-summary'
 DESCRIPTION_SELECTOR = '.item-description'
 METRO_SELECTOR = '.item-metro .label'
+PRICE_SELECTOR = '.price'
+
+CALLR_API_LOGIN = os.environ.get('LOGIN')
+CALLR_API_PASSWORD = os.environ.get('PASSWORD')
+GOOGLE_SHORTENER_API_KEY = os.environ.get('API_KEY')
+
+shortener = Shortener('Google', api_key=GOOGLE_SHORTENER_API_KEY)
 
 def clean_markup(string):
     return re.sub(r'<[^>]*>', '', string)
@@ -55,17 +64,24 @@ def process_listing(listing):
     location = dom.select(GEOLOC_SELECTOR)[0].h2.text
     metro = ', '.join([clean_markup(elm.get_text()) for elm in dom.select(METRO_SELECTOR)])
     description = clean_spaces(description_body.get_text())
+    price = dom.select(PRICE_SELECTOR)[0].text
 
     return {
         'specs': specs,
         'location': location,
         'description': description,
         'metro': metro,
-        'url': listing
+        'url': listing,
+        'price': price
     }
+
+def send_data_via_sms(data):
+    msg = "{0} - {1} - {2} - {3}".format(data['specs'], data['price'], data['location'], shortener.short(data['url']))
+    api.call('sms.send', 'SMS', os.environ.get('PHONE'), msg, None)
 
 try:
     gc = pygsheets.authorize(service_file='credentials.json')
+    api = callr.Api(os.environ.get('LOGIN'), os.environ.get('PASSWORD'))
 
     sheet = gc.open_by_url(SPREADSHEET_URL).sheet1
 
@@ -87,6 +103,11 @@ try:
                         ls['specs'], ls['location'], ls['description'], ls['metro'], ls['url']
                     ]
                 )
+
+                # If this is not the first time we store data (i.e. urls_stored is not empty)
+                # we want to receive SMS alerts with the newest listings (i.e. those we hadn't before).
+                if len(urls_stored) > 0:
+                    send_data_via_sms(ls)
 
 except Exception as e:
     print(e)
