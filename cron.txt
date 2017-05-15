@@ -1,0 +1,1 @@
+*/15 * * * * /path/to/virtualenv/bin/python bot.py

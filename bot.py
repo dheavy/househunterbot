@@ -27,6 +27,10 @@ GOOGLE_SHORTENER_API_KEY = os.environ.get('API_KEY')
 
 shortener = Shortener('Google', api_key=GOOGLE_SHORTENER_API_KEY)
 
+def get_scraped_page(url):
+    res = requests.get(listing)
+    return Bs(res.text, 'lxml')
+
 def clean_markup(string):
     return re.sub(r'<[^>]*>', '', string)
 
@@ -36,8 +40,7 @@ def clean_spaces(string):
 
 def process_listings_page(link):
     try:
-        res = requests.get(link)
-        dom = Bs(res.text, 'lxml')
+        dom = get_scraped_page(link)
 
         details_urls = [URL_DOMAIN + btn.get('href') for btn in dom.select('.btn-details')]
 
@@ -50,8 +53,7 @@ def process_listings_page(link):
         print(e)
 
 def process_listing(listing):
-    res = requests.get(listing)
-    dom = Bs(res.text, 'lxml')
+    dom = get_scraped_page(listing)
 
     print('Processing ' + listing)
 
@@ -85,8 +87,7 @@ try:
 
     sheet = gc.open_by_url(SPREADSHEET_URL).sheet1
 
-    res = requests.get(SEARCH_PAGE)
-    dom = Bs(res.text, 'lxml')
+    dom = get_scraped_page(SEARCH_PAGE)
 
     links = [SEARCH_PAGE] + [
         URL_DOMAIN + a.get('href')
@@ -98,11 +99,10 @@ try:
     for link in links:
         for ls in process_listings_page(link):
             if ls['url'] not in urls_stored:
-                sheet.insert_rows(
-                    row=0, values=[
-                        ls['specs'], ls['location'], ls['description'], ls['metro'], ls['url']
-                    ]
-                )
+                sheet.insert_rows(row=0, values=[
+                    ls['specs'], ls['location'],
+                    ls['description'], ls['metro'], ls['url']
+                ])
 
                 # If this is not the first time we store data (i.e. urls_stored is not empty)
                 # we want to receive SMS alerts with the newest listings (i.e. those we hadn't before).
