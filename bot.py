@@ -3,7 +3,6 @@ import os
 import re
 import requests
 import pygsheets
-import hashlib
 from bs4 import BeautifulSoup as Bs
 
 
@@ -18,7 +17,6 @@ GEOLOC_SELECTOR = '.item-geoloc'
 SPECS_SELECTOR = '.item-summary'
 DESCRIPTION_SELECTOR = '.item-description'
 METRO_SELECTOR = '.item-metro .label'
-TEL_WRAPPER = '.tel-wrapper'
 
 def clean_markup(string):
     return re.sub(r'<[^>]*>', '', string)
@@ -32,14 +30,12 @@ def process_listings_page(link):
         res = requests.get(link)
         dom = Bs(res.text, 'lxml')
 
-        details_btns = [URL_DOMAIN + btn.get('href') for btn in dom.select('.btn-details')]
+        details_urls = [URL_DOMAIN + btn.get('href') for btn in dom.select('.btn-details')]
 
-        listings = []
-
-        for listing in details_btns:
-            listings.append(process_listing(listing))
-
-        return listings
+        return [
+            process_listing(listing_details_url)
+            for listing_details_url in details_urls
+        ]
 
     except Exception as e:
         print(e)
@@ -47,6 +43,8 @@ def process_listings_page(link):
 def process_listing(listing):
     res = requests.get(listing)
     dom = Bs(res.text, 'lxml')
+
+    print('Processing ' + listing)
 
     specs = ' / '.join([
         clean_spaces(clean_markup(str(li).replace('<strong>', ': ').lower()))
@@ -57,16 +55,13 @@ def process_listing(listing):
     location = dom.select(GEOLOC_SELECTOR)[0].h2.text
     metro = ', '.join([clean_markup(elm.get_text()) for elm in dom.select(METRO_SELECTOR)])
     description = clean_spaces(description_body.get_text())
-    tel = dom.select(TEL_WRAPPER) and dom.select(TEL_WRAPPER)[0].get_text().replace('.', '') or '---'
 
     return {
-        'id': hashlib.md5(b'' + description + tel)
         'specs': specs,
         'location': location,
         'description': description,
         'metro': metro,
-        'tel': tel,
-        'url': link
+        'url': listing
     }
 
 try:
@@ -82,20 +77,16 @@ try:
         for a in dom.select(PAGINATION_SELECTOR)
     ]
 
-    # data = []
+    urls_stored = sheet.get_col(5)
 
     for link in links:
         for ls in process_listings_page(link):
-            # data.append(ls)
-            sheet.insert_rows(
-                row=0, values=[
-                    ls['id'], ls['specs'], ls['location'],
-                    ls['description'], ls['metro'],
-                    ls['tel'], ls['url']
-                ]
-            )
-
-    # print(data)
+            if ls['url'] not in urls_stored:
+                sheet.insert_rows(
+                    row=0, values=[
+                        ls['specs'], ls['location'], ls['description'], ls['metro'], ls['url']
+                    ]
+                )
 
 except Exception as e:
     print(e)
