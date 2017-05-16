@@ -26,9 +26,10 @@ CALLR_API_PASSWORD = os.environ.get('PASSWORD')
 GOOGLE_SHORTENER_API_KEY = os.environ.get('API_KEY')
 
 shortener = Shortener('Google', api_key=GOOGLE_SHORTENER_API_KEY)
+api = callr.Api(CALLR_API_LOGIN, CALLR_API_PASSWORD)
 
 def get_scraped_page(url):
-    res = requests.get(listing)
+    res = requests.get(url)
     return Bs(res.text, 'lxml')
 
 def clean_markup(string):
@@ -78,12 +79,14 @@ def process_listing(listing):
     }
 
 def send_data_via_sms(data):
-    msg = "{0} - {1} - {2} - {3}".format(data['specs'], data['price'], data['location'], shortener.short(data['url']))
+    msg = "{0} - {1} - {2} - {3} - {4}".format(
+        data['specs'], data['price'], data['location'], data['metro'],
+        shortener.short(data['url'])
+    )
     api.call('sms.send', 'SMS', os.environ.get('PHONE'), msg, None)
 
 try:
     gc = pygsheets.authorize(service_file='credentials.json')
-    api = callr.Api(os.environ.get('LOGIN'), os.environ.get('PASSWORD'))
 
     sheet = gc.open_by_url(SPREADSHEET_URL).sheet1
 
