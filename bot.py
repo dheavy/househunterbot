@@ -25,6 +25,8 @@ CALLR_API_LOGIN = os.environ.get('LOGIN')
 CALLR_API_PASSWORD = os.environ.get('PASSWORD')
 GOOGLE_SHORTENER_API_KEY = os.environ.get('API_KEY')
 
+PHONE = os.environ.get('PHONE')
+
 shortener = Shortener('Google', api_key=GOOGLE_SHORTENER_API_KEY)
 api = callr.Api(CALLR_API_LOGIN, CALLR_API_PASSWORD)
 
@@ -83,7 +85,7 @@ def send_data_via_sms(data):
         data['specs'], data['price'], data['location'], data['metro'],
         shortener.short(data['url'])
     )
-    api.call('sms.send', 'SMS', os.environ.get('PHONE'), msg, None)
+    api.call('sms.send', 'SMS', PHONE, msg, None)
 
 try:
     gc = pygsheets.authorize(service_file='credentials.json')
