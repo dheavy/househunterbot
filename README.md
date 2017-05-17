@@ -4,11 +4,11 @@ HouseHunterBot
 
 ### Synopsis
 
-[Read the related article on the CALLR blog](#).
+[Read the related article on the CALLR blog](https://www.callr.com/blog/python-house-hunter-bot/?utm_source=davy&utm_medium=github).
 
 ### Install
 
-- create the necessary Google Developers and CALLR accounts to enable access to necessary APIs as described [in the article](#)
+- create the necessary Google Developers and CALLR accounts to enable access to necessary APIs as described [in the article](https://www.callr.com/blog/python-house-hunter-bot/?utm_source=davy&utm_medium=github)
 
 - install the requirements
 
