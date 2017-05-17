@@ -35,11 +35,15 @@ def get_scraped_page(url):
     return Bs(res.text, 'lxml')
 
 def clean_markup(string):
+    string = clean_special_chars(string)
     return re.sub(r'<[^>]*>', '', string)
 
 def clean_spaces(string):
     string = re.sub('\n|\r|\t', ' ', string)
     return re.sub('\s{2,}', ' ', string).strip()
+
+def clean_special_chars(string):
+    return string.replace('²', '2').replace('€', 'e')
 
 def process_listings_page(link):
     try:
